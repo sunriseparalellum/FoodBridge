@@ -1,0 +1,23 @@
+<div class="auth-shell">
+    <div class="card">
+        @if (!success()) {
+            <h3>Регистрация</h3>
+            <div class="field"><label>Username</label><input [(ngModel)]="username" name="username" /></div>
+            <div class="field"><label>Email</label><input [(ngModel)]="email" name="email" type="email" /></div>
+            <div class="field"><label>Пароль</label><input [(ngModel)]="password" type="password" name="password" /></div>
+            <div class="field">
+                <label>Роль</label>
+                <div class="row">
+                    <label><input type="radio" name="role" value="business" [(ngModel)]="role" /> Предприниматель</label>
+                    <label><input type="radio" name="role" value="volunteer" [(ngModel)]="role" /> Волонтёр</label>
+                </div>
+            </div>
+            <button class="btn btn-primary" style="width: 100%; justify-content: center;" (click)="register()">Зарегистрироваться</button>
+            @if (error()) {
+                <p style="color: var(--color-danger); margin-top: 8px;">{{ error() }}</p>
+            }
+        } @else {
+            <p>Регистрация прошла успешно! <a routerLink="/login">Войти</a></p>
+        }
+    </div>
+</div>

@@ -1,0 +1,204 @@
+ТЕХНИЧЕСКАЯ ДОКУМЕНТАЦИЯ FOODBRIDGE
+===================================
+
+1. КРАТКОЕ ОПИСАНИЕ
+-------------------
+FoodBridge - веб-приложение для передачи излишков еды от бизнеса волонтёрам
+и социальным организациям. Пользователь может разместить объявление,
+найти подходящее объявление на карте, забронировать его и отметить получение.
+В приложении также есть калькулятор налоговой выгоды от пожертвований и раздел
+со статьями.
+
+- frontend/ - одностраничное приложение на Angular;
+- backend/ - REST API на Django.
+
+В локальной среде фронтенд работает на http://localhost:4200/, а API - на
+http://127.0.0.1:8000/. Данные сохраняются в SQLite.
+
+2. ФУНКЦИОНАЛЬНОСТЬ
+-------------------
+- Регистрация и вход пользователей с ролями business и volunteer.
+- Выдача и обновление JWT-токенов.
+- Создание, просмотр, редактирование и удаление объявлений о продуктах.
+- Фильтрация объявлений по категории и собственным объявлениям.
+- Расчёт расстояния до объявления по координатам пользователя.
+- Бронирование объявления волонтёром и перевод его в статус completed.
+- Геокодирование адреса и обратное геокодирование через 2GIS.
+- Расчёт максимально учитываемой суммы пожертвования и примерной экономии
+  по КПН.
+- Публичный просмотр статей; управление статьями для администратора Django.
+- Смена пароля авторизованного пользователя.
+
+3. ТЕХНОЛОГИЧЕСКИЙ СТЕК
+-----------------------
+Frontend:
+- Angular 22, TypeScript 6, RxJS 7.8;
+- Angular Router и HttpClient;
+- SCSS;
+- @2gis/mapgl для карты;
+- Angular CLI и @angular/build для сборки;
+- Vitest и jsdom для тестов.
+
+Backend:
+- Python и Django 6.0.7;
+- Django REST Framework;
+- djangorestframework-simplejwt для JWT;
+- django-cors-headers для CORS;
+- requests для HTTP-запросов к 2GIS и внешним страницам;
+- BeautifulSoup для чтения Open Graph-метаданных статей.
+
+Хранение данных: SQLite в локальной разработке, Django ORM и миграции.
+В репозитории пока нет requirements.txt или pyproject.toml. Версии Python-
+зависимостей следует зафиксировать перед развёртыванием.
+
+4. API
+------
+Все API-маршруты начинаются с /api/. Для защищённых запросов используется
+заголовок Authorization: Bearer <access_token>.
+
+Аутентификация:
+- POST /api/auth/register/ - регистрация: username, email, password, role.
+- POST /api/auth/token/ - вход: username, password; возвращает access и refresh.
+- POST /api/auth/token/refresh/ - новый access-токен: refresh.
+- GET /api/auth/me/ - текущий пользователь: id, username, role, is_staff.
+- POST /api/auth/change-password/ - смена пароля: old_password, new_password.
+
+Объявления S2P:
+- GET /api/s2p/listings/ - список; параметры lat, lng, category, mine=true.
+- POST /api/s2p/listings/ - создание, только business.
+- GET/PATCH/DELETE /api/s2p/listings/<id>/ - просмотр и изменение владельцем.
+- POST /api/s2p/listings/<id>/claim/ - бронирование, только volunteer.
+- POST /api/s2p/listings/<id>/complete/ - завершение своего бронирования.
+- GET /api/s2p/geocode/?address=<address> - адрес в координаты.
+- GET /api/s2p/reverse-geocode/?lat=<lat>&lon=<lon> - координаты в адрес.
+
+Пожертвования и статьи:
+- POST /api/donations/tax-calculator/ - расчёт: donation_value, taxable_income,
+  is_monitored, country_code; по умолчанию country_code=KZ.
+- GET /api/articles/list/ и GET /api/articles/list/<slug>/ - публичное чтение.
+- POST/PATCH/DELETE /api/articles/list/<slug>/ - управление для администратора.
+- GET /api/hello/ - проверочный ответ API.
+
+5. АРХИТЕКТУРА
+--------------
+    Angular UI
+        | HTTP/JSON, JWT
+        v
+    Django REST Framework
+        |-- accounts: пользователи и авторизация
+        |-- s2p: объявления, бронирования, 2GIS
+        |-- donations: налоговый расчёт
+        |-- articles: статьи и Open Graph
+        |-- Django ORM -> SQLite
+        `-- requests -> 2GIS API / внешние страницы
+
+Фронтенд использует standalone-компоненты и сервисы Angular. AuthService хранит
+токены в runtime-сигналах. AuthInterceptor добавляет access-токен и обновляет
+его через refresh-токен. authGuard ограничивает личный кабинет, businessGuard
+ограничивает раздел предпринимателя. Серверные permissions остаются главными.
+
+Маршруты фронтенда: /s2p, /producers, /articles, /login, /register и /account.
+
+6. СХЕМА БАЗЫ ДАННЫХ
+--------------------
+Схема реализована моделями Django и миграциями.
+
+accounts.User наследует AbstractUser и содержит role: business или volunteer,
+а также стандартные поля Django. is_staff используется для администрирования.
+
+s2p.Listing: business -> User, category, title, description, food_type,
+quantity, pickup_window_start, pickup_window_end, partner_facility,
+latitude, longitude, status и created_at. category принимает ready_food,
+repurpose или storage; status - open, claimed или completed.
+
+s2p.Claim: listing -> Listing, volunteer -> User и claimed_at.
+
+donations.TaxRule: country_code (уникальный), cap_rate_standard,
+cap_rate_monitored и cpn_rate.
+
+articles.Article: title, уникальный slug, summary, body, cover_image_url,
+external_url, og_title, og_description, og_image и published_at.
+
+Listing и Claim, а также связи с пользователями удаляются каскадно.
+
+7. КАК РАБОТАЮТ ОСНОВНЫЕ ФУНКЦИИ
+--------------------------------
+Авторизация: фронтенд получает access и refresh через token endpoint, затем
+запрашивает /me. При истечении access интерцептор получает новый токен через
+refresh endpoint.
+
+Объявления: business создаёт запись, backend автоматически назначает владельца
+и статус open. В ответе также могут быть distance_km и is_claimed_by_me.
+
+Бронирование: volunteer вызывает claim. Backend проверяет open, создаёт Claim
+и устанавливает claimed. Завершить можно только автору Claim, после чего статус
+становится completed.
+
+Карта: MapComponent использует 2GIS MapGL и возвращает координаты. Ключ 2GIS
+используется в конфигурации карты и backend-запросах к сервису геокодирования;
+его следует ограничить по доменам и вынести из исходного кода перед production.
+
+Налоговый расчёт: backend загружает TaxRule, выбирает лимит по is_monitored,
+ограничивает пожертвование и возвращает max_deductible, accepted_amount и
+estimated_tax_savings.
+
+Статьи: при создании backend может сформировать уникальный slug и получить
+og_title, og_description и og_image из external_url.
+
+8. ТРЕБОВАНИЯ
+-------------
+- Python 3 с поддержкой Django 6.x;
+- Node.js и npm;
+- доступ к интернету для npm-пакетов и 2GIS;
+- Angular CLI запускается из локальных npm-зависимостей.
+
+9. ЛОКАЛЬНЫЙ ЗАПУСК
+------------------
+Backend (Windows PowerShell):
+
+    cd backend
+    python -m venv .venv
+    .venv\Scripts\Activate.ps1
+    python -m pip install django djangorestframework django-cors-headers djangorestframework-simplejwt requests beautifulsoup4
+    python manage.py migrate
+    python manage.py runserver 127.0.0.1:8000
+
+Frontend в отдельном терминале:
+
+    cd frontend
+    npm install
+    npm start
+
+Открыть http://localhost:4200/.
+
+Проверка проекта: в frontend выполнить npm run build и npm test, в backend -
+python manage.py test.
+
+10. ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ
+------------------------
+Сейчас проект не читает настройки из .env: SECRET_KEY, GIS_2GIS_KEY и URL API
+записаны непосредственно в коде. Для production их необходимо вынести в
+переменные окружения.
+
+Рекомендуемые переменные backend:
+- DJANGO_SECRET_KEY - секретный ключ Django;
+- DJANGO_DEBUG - True только локально, False на сервере;
+- DJANGO_ALLOWED_HOSTS - список разрешённых хостов;
+- CORS_ALLOWED_ORIGINS - разрешённые адреса фронтенда;
+- GIS_2GIS_KEY - ключ 2GIS;
+- DATABASE_URL или параметры DATABASE_* - production-база данных.
+
+Рекомендуемая переменная frontend:
+- API_BASE_URL - адрес backend API, например http://127.0.0.1:8000/api.
+
+Перед production-развёртыванием необходимо отключить DEBUG, заменить ключи,
+ограничить CORS, настроить HTTPS, резервное копирование, логирование,
+мониторинг и rate limiting.
+
+11. ТЕСТИРОВАНИЕ И ОГРАНИЧЕНИЯ
+-----------------------------
+Frontend собирается Angular build и тестируется через Vitest/Angular. Backend
+тестируется стандартной командой Django. Желательно добавить API-тесты на
+права ролей, валидацию объявлений, переходы open -> claimed -> completed и
+налоговые расчёты.
+

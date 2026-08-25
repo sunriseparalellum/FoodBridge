@@ -1,0 +1,79 @@
+<h2>Статьи о пищевых отходах</h2>
+
+@if (auth.getIsStaff()) {
+    @if (!showCreateForm()) {
+        <button class="btn btn-accent" style="margin-bottom: 16px;" (click)="toggleCreateForm()">Добваить статью</button>
+    } @else {
+        <div class="card">
+            <h3>Новая статья</h3>
+            <div class="row" style="margin-bottom: 12px;">
+                <label><input type="radio" name="contentType" [checked]="contentType() === 'own'" (change)="contentType.set('own')" /> Своя статья</label>
+                <label><input type="radio" name="contentType" [checked]="contentType() === 'external'" (change)="contentType.set('external')" /> Внешняя ссылка</label>
+            </div>
+
+            <div class="field"><label>Заголовок</label><input [(ngModel)]="title" name="title" /></div>
+            <div class="field"><label>Краткое описание</label><input [(ngModel)]="summary" name="summary" /></div>
+
+            @if (contentType() === 'own') {
+                <div class="field"><label>Текст статьи</label><textarea [(ngModel)]="body" name="body" rows="6"></textarea></div>
+                <div class="field"><label>Обложка (ссылка, необязательно)</label><input [(ngModel)]="coverImageUrl" name="coverImageUrl" /></div>
+            } @else {
+                <div class="field"><label>Ссылка на статью</label><input [(ngModel)]="externalUrl" name="externalUrl" /></div>
+                <small>Превью подтянется автоматически с этой страницы</small>
+            }
+
+            <div class="row" style="margin-top: 12px;">
+                <button class="btn btn-primary" (click)="submitArticle()">Опубликовать</button>
+                <button type="button" class="btn btn-ghost" (click)="toggleCreateForm()">Отмена</button>
+            </div>
+            @if (createError()) {
+                <p style="color: var(--color-danger); margin-top: 8px;">{{ createError() }}</p>
+            }
+        </div>
+    }
+}
+
+<div class="news-list">
+    @for (article of articles(); track article.id) {
+        <div class="news-item">
+            <div class="news-thumb">
+                @if (article.external_url && article.og_image) {
+                    <img [src]="article.og_image" />
+                } @else if (!article.external_url && article.cover_image_url) {
+                    <img [src]="article.cover_image_url" />
+                }
+            </div>
+            <div class="news-body">
+                @if (article.external_url) {
+                    <a class="news-title" [href]="article.external_url" target="_blank">{{ article.og_title || article.title }}</a>
+                    @if (article.og_description || article.summary) {
+                        <p class="news-excerpt">{{ article.og_description || article.summary }}</p>
+                    }
+                    <div class="news-meta">
+                        <span>{{ article.published_at | date: 'd MMMM, HH:mm' }}</span>
+                        <span>·</span>
+                        <span>{{ article.external_url }}</span>
+                    </div>
+                } @else {
+                    <span class="news-title" (click)="toggle(article.id)">{{ article.title }}</span>
+                    <p class="news-excerpt">{{ article.summary }}</p>
+                    <div class="news-meta">
+                        <span>{{ article.published_at | date: 'd MMMM, HH:mm' }}</span>
+                    </div>
+                    @if (expandedId() === article.id) {
+                        <p style="margin-top: 8px; white-space: pre-wrap;">{{ article.body }}</p>
+                    }
+                }
+
+                @if (auth.getIsStaff()) {
+                    <div class="news-actions">
+                        <button type="button" class="btn btn-ghost btn-sm" (click)="deleteArticle(article.id)">Удалить</button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+@if (articles().length === 0) {
+    <p class="empty-state">Статей пока нет</p>
+}

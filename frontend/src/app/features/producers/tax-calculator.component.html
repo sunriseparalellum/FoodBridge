@@ -1,0 +1,22 @@
+<h2>Калькулятор налогового вычета</h2>
+<div class="card" style="max-width: 420px;">
+    <div class="field"><label>Стоимость пожертвования (₸)</label><input type="number" [(ngModel)]="donationValue" name="donationValue" /></div>
+    <div class="field"><label>Налогооблагаемый доход за период (₸)</label><input type="number" [(ngModel)]="taxableIncome" name="taxableIncome" /></div>
+    <div class="field">
+        <label><input type="checkbox" [(ngModel)]="isMonitored" name="isMonitored" /> Состою на мониторинге крупных налогоплательщиков</label>
+    </div>
+    <button class="btn btn-primary" (click)="calculate()">Рассчитать</button>
+</div>
+
+@if (result()) {
+    <div class="card" style="max-width: 420px;">
+        <p>Лимит по вычету: <strong>{{ result()!.max_deductible }} ₸</strong> ({{ result()!.cap_rate * 100 }}% от дохода, {{ result()!.is_monitored ? 'режим мониторинга' : 'стандартный режим' }})</p>
+        <p>Принимается к вычету: <strong>{{ result()!.accepted_amount }} ₸</strong></p>
+        <p>Примерная экономия по КПН: <strong>{{ result()!.estimated_tax_savings }} ₸</strong></p>
+        <small>
+            Расчёт основан на ст. 337 НК РК (в редакции с 2026 года). Применим только при наличии обращения
+            от получателя помощи и решения налогоплательщика, либо если получатель - НКО или организация
+            социальной сферы. Не заменяет консультацию бухгалтера.
+        </small>
+    </div>
+}

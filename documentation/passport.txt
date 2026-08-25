@@ -1,0 +1,83 @@
+FOODBRIDGE PROJECT PASSPORT
+===========================
+
+Project name: FoodBridge
+Project type: Web application for food redistribution and social impact
+Primary language of the interface: Russian
+Documentation date: 2026-08-24
+
+1. PURPOSE
+----------
+FoodBridge connects businesses that have surplus food or recyclable material
+with volunteers who can claim and collect available listings. The application
+also provides environmental/social information articles and a tax-deduction
+estimation tool for donations.
+
+2. USERS AND ROLES
+------------------
+Business:
+- Registers and signs in.
+- Creates, edits, and deletes its own S2P listings.
+- Selects a pickup location on a map or by address.
+- Uses the tax calculator.
+
+Volunteer:
+- Registers and signs in.
+- Views available listings on the map and in the list.
+- Claims an open listing.
+- Confirms pickup for a listing claimed by that volunteer.
+
+Administrator:
+- Uses Django admin and admin-only article management endpoints.
+- The application user model has business and volunteer roles; staff status
+	controls administrator access to article management.
+
+3. MAIN FEATURES
+----------------
+- JWT login and token refresh.
+- Account information and password change.
+- S2P (share-to-protect) listing workflow.
+- Category labels for ready food, repurposing, and temporary storage.
+- Map display and location picking through 2GIS MapGL and geocoding.
+- Public article reading with optional external links and Open Graph metadata.
+- Kazakhstan-oriented donation tax-deduction estimate.
+- Responsive desktop and mobile frontend layout.
+
+4. TECHNOLOGY
+-------------
+Frontend: Angular 22, TypeScript, RxJS, Vitest, 2GIS MapGL
+Backend: Django 6, Django REST Framework, Simple JWT, SQLite for development
+External services: 2GIS geocoding and map service
+
+5. REPOSITORY STRUCTURE
+-----------------------
+backend/       Django project and applications
+frontend/      Angular application
+documentation/ Project, technical, and user documentation
+
+Backend applications:
+- accounts: users, registration, authentication, password changes
+- s2p: listings, claims, map geocoding
+- donations: tax calculation
+- articles: article CRUD and Open Graph metadata
+
+6. CURRENT STATUS
+-----------------
+Implemented:
+- Core frontend routes and backend API routes.
+- Business/volunteer permissions for listing actions.
+- Listing status flow: open -> claimed -> completed.
+- Responsive layout and category icons.
+
+Development-stage limitations:
+- Backend dependencies are not currently captured in a requirements.txt file.
+- Development settings contain DEBUG enabled and inline secrets/configuration.
+- SQLite is configured as the development database.
+- No end-to-end test suite is configured by Angular CLI.
+- The tax calculator is an estimate and is not accounting or legal advice.
+
+7. LOCAL URLS
+-------------
+Frontend: http://localhost:4200/
+Backend:  http://127.0.0.1:8000/
+

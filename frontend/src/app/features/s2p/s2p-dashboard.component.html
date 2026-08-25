@@ -1,0 +1,155 @@
+<div class="s2p-page">
+<h2>Объявления</h2>
+
+<div class="row" style="margin-bottom: 16px; justify-content: space-between;">
+  <div class="tabs">
+    <button type="button" class="tab" [class.active]="selectedCategory() === 'all'" (click)="setCategory('all')">Все</button>
+    <button type="button" class="tab" [class.active]="selectedCategory() === 'ready_food'" (click)="setCategory('ready_food')">Готовая еда</button>
+    <button type="button" class="tab" [class.active]="selectedCategory() === 'repurpose'" (click)="setCategory('repurpose')">На переработку</button>
+    <button type="button" class="tab" [class.active]="selectedCategory() === 'storage'" (click)="setCategory('storage')">На хранение</button>
+  </div>
+
+  @if (auth.getRole() === 'business') {
+    <div class="tabs">
+      <button type="button" class="tab" [class.active]="viewMode() === 'nearby'" (click)="setViewMode('nearby')">Рядом</button>
+      <button type="button" class="tab" [class.active]="viewMode() === 'mine'" (click)="setViewMode('mine')">Мои объявления</button>
+    </div>
+  }
+</div>
+<div class="map-frame">
+  <app-map
+    [listings]="listings()"
+    [center]="center()"
+    [singleMarker]="pickedLocation()"
+    [pickable]="locationMode() === 'map'"
+    (locationPicked)="onMapPicked($event)"
+  ></app-map>
+
+</div>
+@if (auth.getRole() === 'business') {
+  @if (!showCreateForm()) {
+    <button class="btn btn-accent" (click)="toggleCreateForm()">Добавить объявление</button>
+  } @else {
+    <div class="card">
+      <h3>Новое объявление</h3>
+
+      <div class="field">
+        <label>Категория</label>
+        <select [(ngModel)]="category" name="category">
+          <option value="ready_food">Готовая еда</option>
+          <option value="repurpose">На переработку</option>
+          <option value="storage">На временное хранение</option>
+        </select>
+      </div>
+
+      @if (!locationMode()) {
+        <p>Как указать местоположение?</p>
+        <div class="row">
+          <button type="button" class="btn btn-outline" (click)="chooseLocationMode('address')">Ввести адрес</button>
+          <button type="button" class="btn btn-outline" (click)="chooseLocationMode('map')">Выбрать на карте</button>
+        </div>
+      }
+
+      @if (locationMode() === 'address') {
+        <div class="row" style="margin-top: 12px;">
+          <input [(ngModel)]="address" name="address" placeholder="Введите адрес" style="flex: 1;" />
+          <button type="button" class="btn btn-outline" (click)="findAddress()">Найти</button>
+        </div>
+        @if (pickedAddress()) {
+          <p><small>{{ pickedAddress() }}</small></p>
+        }
+      }
+
+      @if (locationMode() === 'map') {
+        <small>Кликните по карте выше, чтобы поставить точку</small>
+        @if (pickedAddress()) {
+          <p><small>{{ pickedAddress() }}</small></p>
+        }
+      }
+
+      @if (locationMode() && pickedLocation()) {
+        <div class="stack" style="margin-top: 16px;">
+          <div class="field"><label>Заголовок</label><input [(ngModel)]="title" name="title" /></div>
+          <div class="field"><label>Описание</label><textarea [(ngModel)]="description" name="description"></textarea></div>
+          <div class="row">
+            <div class="field" style="flex: 1;"><label>Тип еды</label><input [(ngModel)]="foodType" name="foodType" /></div>
+            <div class="field" style="flex: 1;"><label>Количество</label><input [(ngModel)]="quantity" name="quantity" placeholder="напр. 5 кг" /></div>
+          </div>
+          <div class="row">
+            <div class="field" style="flex: 1;"><label>Доступно с</label><input [(ngModel)]="pickupStart" name="pickupStart" type="datetime-local" /></div>
+            <div class="field" style="flex: 1;"><label>Доступно до</label><input [(ngModel)]="pickupEnd" name="pickupEnd" type="datetime-local" /></div>
+          </div>
+          <div class="field">
+            <label>{{ category === 'ready_food' ? 'Куда доставить (приют/фонд, необязательно)' : 'Партнёр (необязательно)' }}</label>
+            <input [(ngModel)]="partnerFacility" name="partnerFacility" [placeholder]="category === 'ready_food' ? 'Например: Приют «Дом надежды»' : 'Название партнёра'" />
+          </div>
+          <button class="btn btn-primary" (click)="submitListing()">Опубликовать</button>
+        </div>
+      }
+
+      <button type="button" class="btn btn-ghost" style="margin-top: 8px;" (click)="toggleCreateForm()">Отмена</button>
+      @if (createError()) {
+        <p style="color: var(--color-danger); margin-top: 8px;">{{ createError() }}</p>
+      }
+    </div>
+  }
+}
+
+<div class="stack" style="margin-top: 16px;">
+  @for (listing of listings(); track listing.id) {
+    <div class="card">
+      @if (editingId() === listing.id) {
+        <div class="field"><label>Заголовок</label><input [(ngModel)]="editTitle" name="editTitle" /></div>
+        <div class="field"><label>Количество</label><input [(ngModel)]="editQuantity" name="editQuantity" /></div>
+        <div class="field"><label>Партнёр</label><input [(ngModel)]="editPartnerFacility" name="editPartnerFacility" /></div>
+        <div class="row">
+          <button class="btn btn-primary" (click)="saveEdit(listing.id)">Сохранить</button>
+          <button type="button" class="btn btn-ghost" (click)="cancelEdit()">Отмена</button>
+        </div>
+      } @else {
+        <div class="row" style="justify-content: space-between; align-items: flex-start;">
+          <div>
+            <span [class]="'category-tag category-' + listing.category">
+              @if (listing.category === 'ready_food') {
+                <span class="material-symbols-outlined category-ready-food-icon" aria-hidden="true">fork_spoon</span>
+              } @else if (listing.category === 'repurpose') {
+                <span class="material-symbols-outlined category-repurpose-icon" aria-hidden="true">recycling</span>
+              } @else if (listing.category === 'storage') {
+                <span class="material-symbols-outlined category-timer" aria-hidden="true">timer</span>
+              } @else {
+                <span class="category-dot"></span>
+              }
+              {{ categoryLabel(listing.category) }}
+            </span>
+            <h3 style="margin-top: 6px;">{{ listing.title }}</h3>
+          </div>
+          <span>{{ listing.status }}</span>
+        </div>
+
+        <p>{{ listing.food_type }} · {{ listing.quantity }}</p>
+        @if (listing.distance_km !== null) {
+          <small>{{ listing.distance_km }} км от вас</small>
+        }
+        @if (listing.partner_facility) {
+          <p><small>{{ listing.category === 'ready_food' ? 'Доставить в' : 'Партнёр' }}: {{ listing.partner_facility }}</small></p>
+        }
+
+        <div class="row" style="margin-top: 8px;">
+          @if (auth.getRole() === 'volunteer' && listing.status === 'open') {
+            <button class="btn btn-accent" (click)="claim(listing.id)">Принять</button>
+          }
+          @if (auth.getRole() === 'volunteer' && listing.status === 'claimed' && listing.is_claimed_by_me) {
+            <button class="btn btn-primary" (click)="completePickup(listing.id)">Забрать заказ</button>
+          }
+          @if (isMine(listing)) {
+            <button type="button" class="btn btn-outline" (click)="startEdit(listing)">Редактировать</button>
+            <button type="button" class="btn btn-ghost" (click)="deleteListing(listing.id)">Удалить</button>
+          }
+        </div>
+      }
+    </div>
+  }
+  @if (listings().length === 0) {
+    <p class="empty-state">Объявлений пока нет</p>
+  }
+</div>
