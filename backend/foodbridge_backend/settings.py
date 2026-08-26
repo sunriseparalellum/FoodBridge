@@ -136,7 +136,11 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
 ] + MIDDLEWARE
 
-CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="http://localhost:4200", cast=Csv())
+CORS_ALLOWED_ORIGINS = config(
+    "CORS_ALLOWED_ORIGINS",
+    default="http://localhost:4200,https://foodbridge-frontend.onrender.com",
+    cast=Csv(),
+)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="127.0.0.1,localhost", cast=Csv())
 REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_CLASSES": [

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { API_BASE_URL } from '../../core/config';
 
 @Component({
     selector: 'app-register',
@@ -22,7 +23,7 @@ export class RegisterComponent {
     constructor(private http: HttpClient) {}
 
     register(): void {
-        this.http.post('http://127.0.0.1:8000/api/auth/register/', {
+        this.http.post(`${API_BASE_URL}/api/auth/register/`, {
             username: this.username,
             email: this.email,
             phone: this.phone,
