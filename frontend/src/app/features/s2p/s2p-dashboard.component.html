@@ -20,8 +20,11 @@
   <app-map
     [listings]="listings()"
     [center]="center()"
-    [singleMarker]="pickedLocation()"
-    [pickable]="locationMode() === 'map'"
+    [singleMarker]="locationMode() === 'business' ? businessPoint() : charityPoint()"
+    [businessPoint]="businessPoint()"
+    [charityPoint]="charityPoint()"
+    [routeCoordinates]="routeCoordinates()"
+    [pickable]="locationMode() !== null"
     (locationPicked)="onMapPicked($event)"
   ></app-map>
 
@@ -43,14 +46,19 @@
       </div>
 
       @if (!locationMode()) {
-        <p>Как указать местоположение?</p>
+        <p>Какую точку указать?</p>
         <div class="row">
-          <button type="button" class="btn btn-outline" (click)="chooseLocationMode('address')">Ввести адрес</button>
-          <button type="button" class="btn btn-outline" (click)="chooseLocationMode('map')">Выбрать на карте</button>
+          <button type="button" class="btn btn-outline" (click)="chooseLocationMode('business')">Адрес бизнеса</button>
+          <button type="button" class="btn btn-outline" (click)="chooseLocationMode('charity')">Адрес организации</button>
         </div>
       }
 
-      @if (locationMode() === 'address') {
+      @if (locationMode()) {
+        <p><strong>{{ locationMode() === 'business' ? 'Укажите точку Отправителя' : 'Укажите точку получателя' }}</strong></p>
+        <div class="row">
+          <button type="button" class="btn btn-ghost" (click)="chooseLocationMode('business')">Изменить точку бизнеса</button>
+          <button type="button" class="btn btn-ghost" (click)="chooseLocationMode('charity')">Изменить точку организации</button>
+        </div>
         <div class="row" style="margin-top: 12px;">
           <input [(ngModel)]="address" name="address" placeholder="Введите адрес" style="flex: 1;" />
           <button type="button" class="btn btn-outline" (click)="findAddress()">Найти</button>
@@ -58,16 +66,14 @@
         @if (pickedAddress()) {
           <p><small>{{ pickedAddress() }}</small></p>
         }
+        <small>Или кликните по карте, чтобы поставить выбранную точку.</small>
       }
 
-      @if (locationMode() === 'map') {
-        <small>Кликните по карте выше, чтобы поставить точку</small>
-        @if (pickedAddress()) {
-          <p><small>{{ pickedAddress() }}</small></p>
+      @if (businessPoint() && charityPoint()) {
+        <p><small>Обе точки выбраны</small></p>
+        @if (routeDistance() !== null) {
+          <p><small>Маршрут: {{ (routeDistance()! / 1000).toFixed(1) }} км.</small></p>
         }
-      }
-
-      @if (locationMode() && pickedLocation()) {
         <div class="stack" style="margin-top: 16px;">
           <div class="field"><label>Заголовок</label><input [(ngModel)]="title" name="title" /></div>
           <div class="field"><label>Описание</label><textarea [(ngModel)]="description" name="description"></textarea></div>
@@ -81,7 +87,11 @@
           </div>
           <div class="field">
             <label>{{ category === 'ready_food' ? 'Куда доставить (приют/фонд, необязательно)' : 'Партнёр (необязательно)' }}</label>
-            <input [(ngModel)]="partnerFacility" name="partnerFacility" [placeholder]="category === 'ready_food' ? 'Например: Приют «Дом надежды»' : 'Название партнёра'" />
+            <input [(ngModel)]="partnerFacility" name="partnerFacility" [placeholder]="category === 'ready_food' ? 'Название организации' : 'Название партнёра'" />
+          </div>
+          <div class="field">
+            <label>Телефон получателя</label>
+            <input [(ngModel)]="charityPhone" name="charityPhone" type="tel" placeholder="Например: +7 700 000 00 00" />
           </div>
           <button class="btn btn-primary" (click)="submitListing()">Опубликовать</button>
         </div>
@@ -132,6 +142,10 @@
         }
         @if (listing.partner_facility) {
           <p><small>{{ listing.category === 'ready_food' ? 'Доставить в' : 'Партнёр' }}: {{ listing.partner_facility }}</small></p>
+        }
+        @if (listing.business_phone || listing.charity_phone) {
+          @if (listing.business_phone) { <p><small>Телефон бизнеса: {{ listing.business_phone }}</small></p> }
+          @if (listing.charity_phone) { <p><small>Телефон организации: {{ listing.charity_phone }}</small></p> }
         }
 
         <div class="row" style="margin-top: 8px;">

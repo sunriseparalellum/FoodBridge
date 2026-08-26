@@ -13,8 +13,9 @@ import { HttpClient } from '@angular/common/http';
 export class RegisterComponent {
     username = '';
     email = '';
+    phone = '';
     password = '';
-    role: 'business' | 'volunteer' = 'volunteer';
+    role: 'business' | 'volunteer' | 'charity' = 'volunteer';
     success = signal(false);
     error = signal('');
 
@@ -24,11 +25,22 @@ export class RegisterComponent {
         this.http.post('http://127.0.0.1:8000/api/auth/register/', {
             username: this.username,
             email: this.email,
+            phone: this.phone,
             password: this.password,
             role: this.role,
         }).subscribe({
             next: () => this.success.set(true),
-            error: () => this.error.set('Не удалось зарегистрироваться - проверьте данные'),
+            error: err => this.error.set(this.getRegisterError(err)),
         });
+    }
+
+    private getRegisterError(error: { error?: Record<string, string[] | string> }): string {
+        const details = error.error;
+        if (details && typeof details === 'object') {
+            return Object.entries(details)
+                .map(([field, value]) => `${field}: ${Array.isArray(value) ? value.join(', ') : value}`)
+                .join('; ');
+        }
+        return 'Не удалось зарегистрироваться - проверьте данные';
     }
 }

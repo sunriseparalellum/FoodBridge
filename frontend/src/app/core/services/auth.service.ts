@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap, switchMap } from 'rxjs';
+import { API_BASE_URL } from '../config';
 
 interface TokenResponse { access: string; refresh: string; }
 interface MeResponse { id: number; username: string; role: 'business' | 'volunteer'; is_staff: boolean; }
@@ -16,12 +17,12 @@ export class AuthService {
     constructor(private http: HttpClient) {}
 
     login(username: string, password: string): Observable<MeResponse> {
-        return this.http.post<TokenResponse>('http://127.0.0.1:8000/api/auth/token/', { username, password }).pipe(
+        return this.http.post<TokenResponse>(`${API_BASE_URL}/api/auth/token/`, { username, password }).pipe(
             tap(res => {
                 this.accessSignal.set(res.access);
                 this.refreshSignal.set(res.refresh);
             }),
-            switchMap(() => this.http.get<MeResponse>('http://127.0.0.1:8000/api/auth/me/')),
+            switchMap(() => this.http.get<MeResponse>(`${API_BASE_URL}/api/auth/me/`)),
             tap(me => {
                 this.roleSignal.set(me.role);
                 this.userIdSignal.set(me.id);
@@ -39,16 +40,16 @@ export class AuthService {
     refreshAccessToken(): Observable<string> {
         const refresh = this.refreshSignal();
         if (!refresh) {
-            throw new Error('Нет refresh-токена - нужен повторный вход');
+            throw new Error('Нет refresh-токена - зайдите снова');
         }
-        return this.http.post<{ access: string }>('http://127.0.0.1:8000/api/auth/token/refresh/', { refresh }).pipe(
+        return this.http.post<{ access: string }>(`${API_BASE_URL}/api/auth/token/refresh/`, { refresh }).pipe(
             tap(res => this.accessSignal.set(res.access)),
             switchMap(res => [res.access]),
         );
     }
 
     changePassword(oldPassword: string, newPassword: string): Observable<any> {
-        return this.http.post('http://127.0.0.1:8000/api/auth/change-password/', {
+        return this.http.post(`${API_BASE_URL}/api/auth/change-password/`, {
             old_password: oldPassword,
             new_password: newPassword,
         });

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_BASE_URL } from '../../core/config';
 
 export interface Article {
     id: number;
@@ -18,7 +19,7 @@ export interface Article {
 
 @Injectable({ providedIn: 'root' })
 export class ArticlesService {
-    private baseUrl = 'http://127.0.0.1:8000/api/articles';
+    private baseUrl = `${API_BASE_URL}/api/articles`;
 
     constructor(private http: HttpClient) {}
 

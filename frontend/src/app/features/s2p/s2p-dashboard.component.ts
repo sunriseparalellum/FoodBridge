@@ -18,8 +18,11 @@ export class S2pDashboardComponent implements OnInit {
     viewMode = signal<'nearby' | 'mine'>('nearby');
 
     showCreateForm = signal(false);
-    locationMode = signal<'address' | 'map' | null>(null);
-    pickedLocation = signal<[number, number] | null>(null);
+    locationMode = signal<'business' | 'charity' | null>(null);
+    businessPoint = signal<[number, number] | null>(null);
+    charityPoint = signal<[number, number] | null>(null);
+    routeCoordinates = signal<[number, number][]>([]);
+    routeDistance = signal<number | null>(null);
     pickedAddress = signal('');
     createError = signal('');
 
@@ -31,7 +34,10 @@ export class S2pDashboardComponent implements OnInit {
     pickupStart = '';
     pickupEnd = '';
     partnerFacility = '';
+    charityPhone = '';
     address = '';
+    businessAddress = '';
+    charityAddress = '';
 
     editingId = signal<number | null>(null);
     editTitle = '';
@@ -57,7 +63,9 @@ export class S2pDashboardComponent implements OnInit {
             category: this.selectedCategory(),
             mine: this.viewMode() === 'mine',
         }).subscribe({
-            next: data => this.listings.set(data),
+            next: data => {
+                this.listings.set(data);
+            },
             error: err => console.error('Ошибка загрузки:', err),
         });
     }
@@ -95,9 +103,9 @@ export class S2pDashboardComponent implements OnInit {
         if (!this.showCreateForm()) this.resetCreateForm();
     }
 
-    chooseLocationMode(mode: 'address' | 'map'): void {
+    chooseLocationMode(mode: 'business' | 'charity'): void {
         this.locationMode.set(mode);
-        this.pickedLocation.set(null);
+        this.address = mode === 'business' ? this.businessAddress : this.charityAddress;
         this.pickedAddress.set('');
     }
 
@@ -105,27 +113,59 @@ export class S2pDashboardComponent implements OnInit {
         this.createError.set('');
         this.s2pService.geocodeAddress(this.address).subscribe({
             next: res => {
-                this.pickedLocation.set([res.longitude, res.latitude]);
+                const point: [number, number] = [res.longitude, res.latitude];
+                if (this.locationMode() === 'business') {
+                    this.businessPoint.set(point);
+                    this.businessAddress = this.address;
+                } else {
+                    this.charityPoint.set(point);
+                    this.charityAddress = this.address;
+                }
                 this.pickedAddress.set(res.address);
                 this.center.set([res.longitude, res.latitude]);
+                this.loadRoute();
             },
             error: () => this.createError.set('Адрес не найден - уточните адрес'),
         });
     }
 
     onMapPicked(loc: { lat: number; lng: number }): void {
-        this.pickedLocation.set([loc.lng, loc.lat]);
+        const point: [number, number] = [loc.lng, loc.lat];
+        if (this.locationMode() === 'business') this.businessPoint.set(point);
+        if (this.locationMode() === 'charity') this.charityPoint.set(point);
         this.pickedAddress.set('Определяем адрес...');
         this.s2pService.reverseGeocode(loc.lat, loc.lng).subscribe({
             next: res => this.pickedAddress.set(res.address),
             error: () => this.pickedAddress.set('Не удалось определить адрес для этой точки'),
         });
+        this.loadRoute();
+    }
+
+    private loadRoute(): void {
+        const business = this.businessPoint();
+        const charity = this.charityPoint();
+        if (!business || !charity) {
+            this.routeCoordinates.set([]);
+            return;
+        }
+        this.s2pService.getRoute(business, charity).subscribe({
+            next: route => {
+                this.routeCoordinates.set(route.coordinates);
+                this.routeDistance.set(route.distance_m);
+            },
+            error: () => {
+                this.routeCoordinates.set([]);
+                this.routeDistance.set(null);
+                this.createError.set('Не удалось построить маршрут по дорогам');
+            },
+        });
     }
 
     submitListing(): void {
-        const point = this.pickedLocation();
-        if (!point) {
-            this.createError.set('Укажите местоположение объявления');
+        const businessPoint = this.businessPoint();
+        const charityPoint = this.charityPoint();
+        if (!businessPoint || !charityPoint) {
+            this.createError.set('Укажите адрес бизнеса и адрес получателя');
             return;
         }
         if (!this.title.trim()) {
@@ -136,7 +176,7 @@ export class S2pDashboardComponent implements OnInit {
             this.createError.set('Укажите количество');
             return;
         }
-        const [lng, lat] = point;
+        const [lng, lat] = businessPoint;
         this.s2pService.createListing({
             category: this.category,
             title: this.title.trim(),
@@ -146,8 +186,11 @@ export class S2pDashboardComponent implements OnInit {
             pickup_window_start: this.toIsoDateTime(this.pickupStart),
             pickup_window_end: this.toIsoDateTime(this.pickupEnd),
             partner_facility: this.partnerFacility,
+            charity_phone: this.charityPhone,
             latitude: lat,
             longitude: lng,
+            charity_latitude: charityPoint[1],
+            charity_longitude: charityPoint[0],
         }).subscribe({
             next: () => {
                 this.resetCreateForm();
@@ -217,9 +260,15 @@ export class S2pDashboardComponent implements OnInit {
         this.pickupStart = '';
         this.pickupEnd = '';
         this.partnerFacility = '';
+        this.charityPhone = '';
         this.address = '';
+        this.businessAddress = '';
+        this.charityAddress = '';
         this.locationMode.set(null);
-        this.pickedLocation.set(null);
+        this.businessPoint.set(null);
+        this.charityPoint.set(null);
+        this.routeCoordinates.set([]);
+        this.routeDistance.set(null);
         this.pickedAddress.set('');
         this.createError.set('');
     }

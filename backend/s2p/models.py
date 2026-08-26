@@ -21,8 +21,11 @@ class Listing(models.Model):
     pickup_window_start = models.DateTimeField(null=True, blank=True)
     pickup_window_end = models.DateTimeField(null=True, blank=True)
     partner_facility = models.CharField(max_length=255, blank=True)  # актуально для repurpose/storage
+    charity_phone = models.CharField(max_length=30, blank=True, default="")
     latitude = models.FloatField()
     longitude = models.FloatField()
+    charity_latitude = models.FloatField(null=True, blank=True)
+    charity_longitude = models.FloatField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -37,3 +40,5 @@ class Claim(models.Model):
 
     def __str__(self):
         return f"{self.volunteer} → {self.listing}"
+
+

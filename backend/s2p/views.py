@@ -1,5 +1,7 @@
 import requests
+import re
 from django.conf import settings
+from django.db.models import Q
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -22,14 +24,23 @@ class ListingViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if self.action in ("update", "partial_update", "destroy", "retrieve") and user.is_authenticated:
-            qs = Listing.objects.filter(business=user) | Listing.objects.filter(status=Listing.Status.OPEN)
-        elif self.request.query_params.get("mine") == "true" and user.is_authenticated:
+
+        if self.action in ("update", "partial_update", "destroy"):
+            return Listing.objects.filter(business=user)
+
+        if self.action == "retrieve" and user.is_authenticated:
+            return (
+                Listing.objects.filter(business=user)
+                | Listing.objects.filter(status=Listing.Status.OPEN)
+                | Listing.objects.filter(status=Listing.Status.CLAIMED, claims__volunteer=user)
+            )
+
+        if self.request.query_params.get("mine") == "true" and user.is_authenticated:
             qs = Listing.objects.filter(business=user)
         else:
             qs = Listing.objects.filter(status=Listing.Status.OPEN)
-            if user.is_authenticated:
-                qs = qs | Listing.objects.filter(status=Listing.Status.CLAIMED, claims__volunteer=user)
+        if user.is_authenticated:
+            qs = qs | Listing.objects.filter(status=Listing.Status.CLAIMED, claims__volunteer=user)
 
         category = self.request.query_params.get("category")
         if category:
@@ -47,7 +58,9 @@ class ListingViewSet(viewsets.ModelViewSet):
         Claim.objects.create(listing=listing, volunteer=request.user)
         listing.status = Listing.Status.CLAIMED
         listing.save()
-        return Response({"detail": "Принято"})
+        return Response({"detail": "Принято", "listing": ListingSerializer(
+            listing, context={"request": request}
+        ).data})
 
     @action(detail=True, methods=["post"])
     def complete(self, request, pk=None):
@@ -108,3 +121,52 @@ def reverse_geocode(request):
     item = items[0]
     address = item.get("full_name") or item.get("address_name") or item.get("name", "")
     return Response({"address": address})
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def build_route(request):
+    try:
+        start_lat = float(request.query_params["start_lat"])
+        start_lng = float(request.query_params["start_lng"])
+        end_lat = float(request.query_params["end_lat"])
+        end_lng = float(request.query_params["end_lng"])
+    except (KeyError, TypeError, ValueError):
+        return Response({"detail": "Нужны координаты начала и конца маршрута"}, status=400)
+
+    response = requests.post(
+        "https://routing.api.2gis.com/routing/7.0.0/global",
+        params={"key": settings.GIS_2GIS_KEY},
+        json={
+            "points": [
+                {"type": "stop", "lat": start_lat, "lon": start_lng},
+                {"type": "stop", "lat": end_lat, "lon": end_lng},
+            ],
+            "route_mode": "fastest",
+            "traffic_mode": "jam",
+            "transport": "driving",
+            "locale": "ru",
+        },
+        timeout=10,
+    )
+    data = response.json()
+    if response.status_code != 200 or data.get("status") != "OK":
+        return Response({"detail": data.get("message", "Маршрут не найден")}, status=502)
+
+    route = (data.get("result") or [{}])[0]
+    coordinates = []
+    for maneuver in route.get("maneuvers", []):
+        for path in maneuver.get("outcoming_path", {}).get("geometry", []):
+            selection = path.get("selection", "")
+            for lng, lat in re.findall(r"(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)", selection):
+                point = [float(lng), float(lat)]
+                if not coordinates or coordinates[-1] != point:
+                    coordinates.append(point)
+
+    if len(coordinates) < 2:
+        return Response({"detail": "2GIS не вернул геометрию маршрута"}, status=502)
+
+    return Response({
+        "coordinates": coordinates,
+        "distance_m": route.get("total_distance"),
+    })

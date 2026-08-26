@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_BASE_URL } from '../../core/config';
 
 export type ListingCategory = 'ready_food' | 'repurpose' | 'storage';
 
@@ -15,6 +16,10 @@ export interface Listing {
     pickup_window_start: string | null;
     pickup_window_end: string | null;
     partner_facility: string;
+    charity_phone: string;
+    business_phone?: string;
+    charity_latitude: number | null;
+    charity_longitude: number | null;
     latitude: number;
     longitude: number;
     distance_km: number | null;
@@ -24,7 +29,7 @@ export interface Listing {
 
 @Injectable({ providedIn: 'root' })
 export class S2pService {
-    private baseUrl = 'http://127.0.0.1:8000/api/s2p';
+    private baseUrl = `${API_BASE_URL}/api/s2p`;
 
     constructor(private http: HttpClient) {}
 
@@ -66,4 +71,15 @@ export class S2pService {
     reverseGeocode(lat: number, lng: number): Observable<{ address: string }> {
         return this.http.get<{ address: string }>(`${this.baseUrl}/reverse-geocode/?lat=${lat}&lon=${lng}`);
     }
+
+    getRoute(start: [number, number], end: [number, number]): Observable<{ coordinates: [number, number][]; distance_m: number }> {
+        const params = new URLSearchParams({
+            start_lat: String(start[1]),
+            start_lng: String(start[0]),
+            end_lat: String(end[1]),
+            end_lng: String(end[0]),
+        });
+        return this.http.get<{ coordinates: [number, number][]; distance_m: number }>(`${this.baseUrl}/route/?${params}`);
+    }
+
 }
