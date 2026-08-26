@@ -108,13 +108,27 @@ def reverse_geocode(request):
     if not lat or not lon:
         return Response({"detail": "Нужны координаты"}, status=400)
 
-    resp = requests.get(
-        "https://catalog.api.2gis.com/3.0/items/geocode",
-        params={"lat": lat, "lon": lon, "fields": "items.point", "key": settings.GIS_2GIS_KEY},
-        timeout=5,
-    )
-    data = resp.json()
-    items = data.get("result", {}).get("items", [])
+    items = []
+    # Без radius 2GIS ищет объект, только если точка попадает точно в его
+    # контур - клик на карте почти никогда не совпадает с полигоном здания
+    # пиксель-в-пиксель, поэтому расширяем поиск постепенно.
+    for radius in (50, 200, 1000):
+        resp = requests.get(
+            "https://catalog.api.2gis.com/3.0/items/geocode",
+            params={
+                "lat": lat,
+                "lon": lon,
+                "radius": radius,
+                "fields": "items.point",
+                "key": settings.GIS_2GIS_KEY,
+            },
+            timeout=5,
+        )
+        data = resp.json()
+        items = data.get("result", {}).get("items", [])
+        if items:
+            break
+
     if not items:
         return Response({"detail": "Адрес не найден для этой точки"}, status=404)
 
