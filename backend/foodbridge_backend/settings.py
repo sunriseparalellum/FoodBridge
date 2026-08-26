@@ -146,10 +146,17 @@ for host in ("127.0.0.1", "localhost", "foodbridge-tkxr.onrender.com"):
     if host not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(host)
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
+    ),
     "DEFAULT_THROTTLE_CLASSES": [
-    "rest_framework.throttling.AnonRateThrottle",
-    "rest_framework.throttling.UserRateThrottle",
-],
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
     "DEFAULT_THROTTLE_RATES": {"anon": "20/min", "user": "60/min"},
 }
 
