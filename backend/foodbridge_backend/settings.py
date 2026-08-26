@@ -142,6 +142,9 @@ CORS_ALLOWED_ORIGINS = config(
     cast=Csv(),
 )
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="127.0.0.1,localhost", cast=Csv())
+for host in ("127.0.0.1", "localhost", "foodbridge-tkxr.onrender.com"):
+    if host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(host)
 REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_CLASSES": [
     "rest_framework.throttling.AnonRateThrottle",
