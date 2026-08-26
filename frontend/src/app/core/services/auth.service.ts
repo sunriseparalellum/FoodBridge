@@ -4,13 +4,13 @@ import { Observable, tap, switchMap } from 'rxjs';
 import { API_BASE_URL } from '../config';
 
 interface TokenResponse { access: string; refresh: string; }
-interface MeResponse { id: number; username: string; role: 'business' | 'volunteer'; is_staff: boolean; }
+interface MeResponse { id: number; username: string; role: 'business' | 'volunteer' | 'charity'; is_staff: boolean; }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
     private accessSignal = signal<string | null>(null);
     private refreshSignal = signal<string | null>(null);
-    private roleSignal = signal<'business' | 'volunteer' | null>(null);
+    private roleSignal = signal<'business' | 'volunteer' | 'charity' | null>(null);
     private userIdSignal = signal<number | null>(null);
     private isStaffSignal = signal<boolean>(false);
 
@@ -33,7 +33,7 @@ export class AuthService {
 
     getToken(): string | null { return this.accessSignal(); }
     isLoggedIn(): boolean { return this.accessSignal() !== null; }
-    getRole(): 'business' | 'volunteer' | null { return this.roleSignal(); }
+    getRole(): 'business' | 'volunteer' | 'charity' | null { return this.roleSignal(); }
     getUserId(): number | null { return this.userIdSignal(); }
     getIsStaff(): boolean { return this.isStaffSignal(); }
 

@@ -22,7 +22,8 @@ import { AuthService } from './core/services/auth.service';
         <div class="nav-auth">
           @if (auth.isLoggedIn()) {
             <a routerLink="/account" class="btn btn-outline btn-sm">Сменить пароль</a>
-            <span class="nav-role">{{ auth.getRole() }}</span>
+            <span class="nav-role">Роль: {{ auth.getRole() }}</span>
+            <button type="button" class="btn btn-outline btn-sm" (click)="auth.logout()">Выйти</button>
           } @else {
             <a routerLink="/login" class="btn btn-outline btn-sm">Войти</a>
             <a routerLink="/register" class="btn btn-primary btn-sm">Регистрация</a>
