@@ -4,7 +4,8 @@ from bs4 import BeautifulSoup
 def fetch_og_metadata(url: str) -> dict:
     try:
         resp = requests.get(url, timeout=5, headers={"User-Agent": "Chrome/122.0.0.0 Safari/537.36, Mozilla/5.0"})
-        soup = BeautifulSoup(resp.text, "html.parser")
+
+        soup = BeautifulSoup(resp.content, "html.parser")
 
         def meta(prop):
             tag = soup.find("meta", property=prop)
