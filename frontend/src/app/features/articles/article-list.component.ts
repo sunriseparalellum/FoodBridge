@@ -63,7 +63,7 @@ export class ArticleListComponent implements OnInit {
         });
     }
 
-    deleteArticle(id: number): void {
+    deleteArticle(id: string): void {
         if (!confirm('Удалить статью?')) return;
         this.articlesService.deleteArticle(id).subscribe({
             next: () => this.load(),
