@@ -31,7 +31,7 @@ export class ArticlesService {
         return this.http.post<Article>(`${this.baseUrl}/list/`, article);
     }
 
-    deleteArticle(slugOrId: number): Observable<void> {
+    deleteArticle(slugOrId: string): Observable<void> {
         return this.http.delete<void>(`${this.baseUrl}/list/${slugOrId}/`);
     }
 }
