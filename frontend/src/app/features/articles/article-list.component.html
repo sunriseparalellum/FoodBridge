@@ -67,7 +67,7 @@
 
                 @if (auth.getIsStaff()) {
                     <div class="news-actions">
-                        <button type="button" class="btn btn-ghost btn-sm" (click)="deleteArticle(article.id)">Удалить</button>
+                        <button type="button" class="btn btn-ghost btn-sm" (click)="deleteArticle(article.slug)">Удалить</button>
                     </div>
                 }
             </div>
