@@ -10,12 +10,13 @@ class ArticleSerializer(serializers.ModelSerializer):
         read_only_fields = ["og_title", "og_description", "og_image", "published_at"]
 
     def _make_unique_slug(self, title):
-        base = slugify(title, allow_unicode=True)
+        max_length = Article._meta.get_field("slug").max_length
+        base = slugify(title, allow_unicode=True)[: max_length - 5]
         slug = base
         i = 1
         while Article.objects.filter(slug=slug).exists():
             i += 1
-            slug = f"{base}-{i}"
+            slug = f"{base}-{i}"[:max_length]
         return slug
 
     def create(self, validated_data):
